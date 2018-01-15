@@ -1,0 +1,119 @@
+package com.redsource.dataservice;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Properties;
+
+import com.jcraft.jsch.Session;
+import com.redsource.dataservice.util.PropertyUtil;
+import com.redsource.dataservice.util.SSHUtil;
+
+public class ListingDiagnosis {
+	private final static String FEED_LOC="/data/provider/";
+	private final static String GET_ALL_XML_CMD="-iname '*.xml' -printf '%p\n' | sort -k1 -n";
+	private final static String EXTRACT_CMD="ve python -m jw.utils.extract ";
+	private final static String VE_CMD="cd /usr/local/xml-project-scripts/ && source env/bin/activate && cd src ";
+	
+	
+	private final static String DB_CONFIG_SOURCES="SELECT feed_format_id from xml.xml_config_sources where source=?";
+	private final static String DB_FEED_FORMAT="SELECT * from  xml.xml_config_feed_formats where id=?";
+	public static void main(String[] args) throws SQLException{
+		// TODO Auto-generated method stub
+		Connection dbPRDconn=null ;
+		Connection dbPRDXMLconn=null;
+		Session session=null;
+		HashMap<String,String> listingMap=new HashMap<String,String>(); 
+		if(args.length!=1){
+			System.out.println("invalid input");
+		}else{
+			try {
+		    	dbPRDconn = PropertyUtil.getConnectionProduction();
+		    	dbPRDXMLconn = PropertyUtil.getConnectionProductionXML();
+		    	Properties propConfig = PropertyUtil.getProperty();
+		    	session = SSHUtil.getConnection(propConfig.getProperty("PRODUCTION_SPLIT_HOST"),
+						propConfig.getProperty("UNIX_USER"), propConfig.getProperty("PRODUCTION_PEM"));
+		    	
+		    	int feed_id=getFeedFormatID(dbPRDXMLconn, args[0]);
+		    	if(feed_id==0){
+		    		System.out.println("INVALID SOURCE");
+		    		throw new Exception();
+		    	}
+		    	String[] feedType = getTypeFormat(dbPRDXMLconn, feed_id);
+		    	String getAllXMLCMD="find "+FEED_LOC+args[0]+" "+GET_ALL_XML_CMD;
+		    	String result = SSHUtil.executeCommand(session, getAllXMLCMD);
+		    	String[] ary = result.split("\n");
+		    	if(feedType[0].equalsIgnoreCase("incremental")){
+		    		for(int i=0;i<ary.length;i++){
+		    			//String[] extractAry=SSHUtil.executeCommand(session,VE_CMD+ " && "+EXTRACT_CMD+args[0]+" "+ary[i]+" "+feedType[1]).split("\n");
+		    			String s="cat "+ary[i]+" |"+"grep -iPo "+"'<"+feedType[1]+">(.|\\n)*?<\\/"+feedType[1]+">'";
+		    			String[] extractAry=SSHUtil.executeCommand(session,s).split("\n");
+		    			System.out.println("Processed:"+i+"/"+ary.length);
+		    			for(int j=0;j<extractAry.length;j++){
+		    				s=extractAry[j].replaceAll("<"+feedType[1]+">", "").replaceAll("</"+feedType[1]+">", "");
+		    				listingMap.put(s, ary[i]);
+		    			}
+		    			if(i==30)break;
+		    		}
+		    	}else{
+		    		
+		    	}
+		    	listingMap.toString();
+		    	///Iterate on map get the database
+		    	
+			}catch(Exception e){
+		    	e.printStackTrace();
+		    }finally {
+	    		dbPRDconn.close();
+	    		dbPRDXMLconn.close();
+	    		session.disconnect();
+		    }
+			
+		}
+	    
+	}
+	private static int getFeedFormatID(Connection dbPRDXMLconn, String source) throws SQLException{
+		ResultSet rs =null;
+		PreparedStatement stmt=null;
+		try {
+			stmt=dbPRDXMLconn.prepareStatement(DB_CONFIG_SOURCES);
+			stmt.setString(1, source);
+			rs=stmt.executeQuery();
+			if(rs.next()) {
+				return rs.getInt("feed_format_id");
+			}
+		}catch (Exception e) {
+			System.out.println("Problem  in searchStatusChangeTable");
+			e.printStackTrace();
+		}finally {
+			rs.close();
+			stmt.close();
+		}
+		return 0;
+	}
+	private static String[] getTypeFormat(Connection dbPRDXMLconn,int feedId) throws SQLException{
+		ResultSet rs =null;
+		PreparedStatement stmt=null;
+		String[] arr=new String[2];
+		try {
+			stmt=dbPRDXMLconn.prepareStatement(DB_FEED_FORMAT);
+			stmt.setInt(1, feedId);
+			rs=stmt.executeQuery();
+			if(rs.next()) {
+				arr[0]=rs.getString("type");
+				arr[1]=rs.getString("id_element");
+				return arr;
+			}
+		}catch (Exception e) {
+			System.out.println("Problem  in searchStatusChangeTable");
+			e.printStackTrace();
+		}finally {
+			rs.close();
+			stmt.close();
+		}
+		return null;
+	}
+
+}

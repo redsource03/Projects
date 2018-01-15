@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<qualifiedTypeNameHistroy>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.hibernate.dao.StockDao"/>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.hibernate.model.Metrics"/>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.hibernate.dao.MetricsDao"/>
+<fullyQualifiedTypeName name="java.util.List"/>
+<fullyQualifiedTypeName name="java.util.Date"/>
+<fullyQualifiedTypeName name="org.apache.commons.io.IOUtils"/>
+<fullyQualifiedTypeName name="org.json.JSONObject"/>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.hibernate.dao.StockPriceDao"/>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.hibernate.dao.StockDaoImpl"/>
+<fullyQualifiedTypeName name="org.springframework.beans.factory.annotation.Autowired"/>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.script.StockPriceLoader"/>
+<fullyQualifiedTypeName name="com.redsource.fundamentals.hibernate.model.StockPrice"/>
+</qualifiedTypeNameHistroy>

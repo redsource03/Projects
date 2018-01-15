@@ -1,0 +1,49 @@
+package com.redsource.dataservice;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Properties;
+
+import com.jcraft.jsch.Session;
+import com.redsource.dataservice.util.PropertyUtil;
+import com.redsource.dataservice.util.SSHUtil;
+
+public class ListingDiagnosis {
+	private final static String FEED_LOC="/data/provider/";
+	private final static String GET_ALL_XML_CMD="-iname '*.xml' -printf '%p\n' | sort -k1 -n";
+	private final static String EXTRACT_CMD="ve python -m jw.utils.extract ";
+	private final static String VE_CMD="cd /usr/local/xml-project-scripts/ && source env/bin/activate && cd src ";
+	public static void main(String[] args) throws SQLException{
+		// TODO Auto-generated method stub
+		Connection dbPRDconn=null ;
+		Connection dbPRDXMLconn=null;
+		Session session=null;
+		if(args.length!=1){
+			System.out.println("invalid input");
+		}else{
+			try {
+		    	dbPRDconn = PropertyUtil.getConnectionProduction();
+		    	dbPRDXMLconn = PropertyUtil.getConnectionProductionXML();
+		    	Properties propConfig = PropertyUtil.getProperty();
+		    	session = SSHUtil.getConnection(propConfig.getProperty("PRODUCTION_SPLIT_HOST"),
+						propConfig.getProperty("UNIX_USER"), propConfig.getProperty("PRODUCTION_PEM"));
+		    	String getAllXMLCMD="find "+FEED_LOC+args[0]+" "+GET_ALL_XML_CMD;
+		    	
+		    	String result = SSHUtil.executeCommand(session, getAllXMLCMD);
+		    	String[] ary = result.split("\n");
+		    	SSHUtil.executeCommand(session, VE_CMD);
+		    	System.out.println(EXTRACT_CMD+args[0]+" "+ary[1]+" uniqueID");
+		    	System.out.println(SSHUtil.executeCommand(session, EXTRACT_CMD+args[0]+" "+ary[1]+" uniqueID"));
+			}catch(Exception e){
+		    	e.printStackTrace();
+		    }finally {
+	    		dbPRDconn.close();
+	    		dbPRDXMLconn.close();
+	    		session.disconnect();
+		    }
+			
+		}
+	    
+	}
+
+}
